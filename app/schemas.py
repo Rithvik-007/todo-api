@@ -1,10 +1,18 @@
-from pydantic import EmailStr
-from sqlmodel import SQLModel, Field
+from pydantic import EmailStr, BaseModel, Field
 
-class RegisterRequest(SQLModel):
+
+class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
 
-class UserResponse(SQLModel):
+class UserResponse(BaseModel):
     id: int
     email: str
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
