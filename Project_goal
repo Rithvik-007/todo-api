@@ -1,0 +1,149 @@
+Lets take a break for tonight. Before that just tell me how are we going to build this project and what is the end goal of this project. 
+
+Cool. Here’s the plan and the end goal — clean, concrete, no fantasy.
+
+End goal
+
+A Secure Research Artifact Registry backend that you can put on your resume as a “real” system:
+
+Users can log in (JWT)
+
+Users can create artifacts (models / datasets / experiments / papers)
+
+Artifacts support versions
+
+Artifacts can be private / shared / public
+
+Users can upload files tied to a version
+
+Access is enforced with permissions, not vibes
+
+Everything has clean API design: filtering, pagination, proper status codes
+
+Later add deployment (Docker/CI/CD) when the core is solid
+
+Think: “private HuggingFace-lite” for research outputs.
+
+This is a strong SDE project because it proves you can build backend systems with security + data modeling.
+
+#########################################################################################
+
+How we’re going to build it (phases)
+Phase 1 — Foundation (already mostly done)
+
+Register/login ✅
+
+Password hashing ✅
+
+JWT issuance ✅
+
+Token verification + protected route ✅ (/auth/me)
+
+Swagger auth works ✅
+
+Deliverable: auth is real and reusable.
+
+
+######################################################################################################
+
+
+Phase 2 — Core domain: Artifacts + versions
+
+We add models:
+
+Artifact (owner, title, type, visibility, description, created_at)
+
+ArtifactVersion (artifact_id, version tag, changelog, created_at)
+
+Endpoints:
+
+POST /artifacts (create)
+
+GET /artifacts (list mine + shared with me)
+
+GET /artifacts/{id} (permission check)
+
+POST /artifacts/{id}/versions
+
+GET /artifacts/{id}/versions
+
+Deliverable: usable registry without files.
+
+
+
+################################################################################################################
+
+
+
+
+
+Phase 3 — Sharing & permissions
+
+Add model:
+
+AccessGrant (artifact_id, user_id, role: viewer/editor)
+
+Rules:
+
+PRIVATE: only owner
+
+SHARED: owner + grants
+
+PUBLIC: anyone can view metadata
+
+Deliverable: security story becomes legit.
+
+######################################################################################################
+
+Phase 4 — File upload
+
+Add:
+
+ArtifactFile metadata (file_id, version_id, filename, size, checksum)
+
+store file bytes on disk (./storage/) for MVP
+
+Endpoints:
+
+upload/download with permission checks
+
+Deliverable: registry stores real artifacts, not just text.
+
+
+#########################################################################################################
+
+Phase 5 — Resume-ready polish
+
+Pagination + filters
+
+Error handling consistency
+
+Logging (no sensitive data)
+
+Basic audit log (who created/updated/downloaded)
+
+######################################################################################################
+
+Then (later):
+
+Postgres migration
+
+Docker + deploy
+
+CI/CD tests
+
+The “so what” for interviews
+
+You’ll be able to talk about:
+
+stateless auth and tradeoffs
+
+RBAC/ownership enforcement
+
+relational modeling & constraints
+
+safe file handling
+
+API design decisions
+
+That’s the point. Not the app itself.

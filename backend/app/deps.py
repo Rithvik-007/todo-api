@@ -1,8 +1,8 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
-from app.models import User
-from app.crud import get_user_by_email
-from app.auth import SECRET_KEY, ALGORITHM
+from backend.app.models import User
+from backend.app.crud import get_user_by_email
+from backend.app.auth import SECRET_KEY, ALGORITHM
 from jose import jwt, JWTError
 
 
