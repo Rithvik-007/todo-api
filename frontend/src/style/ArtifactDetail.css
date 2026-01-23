@@ -1,0 +1,538 @@
+.artifact-detail-page {
+    min-height: 100vh;
+    width: 100%;
+    background: linear-gradient(135deg, #1a1f35 0%, #2d3561 50%, #1a1f35 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+    padding: 40px 60px;
+    box-sizing: border-box;
+    position: relative;
+    overflow-x: hidden;
+  }
+  
+  .artifact-detail-page::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      radial-gradient(circle at 20% 30%, rgba(102, 126, 234, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(118, 75, 162, 0.08) 0%, transparent 50%),
+      linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.2) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  .artifact-detail-page > * {
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Back Button */
+  .back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 24px;
+  }
+  
+  .back-button:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(-4px);
+  }
+  
+  .back-button svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  /* Header */
+  .detail-header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 32px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+  
+  .detail-header h2 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a202c;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .artifact-id-badge {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  
+  /* Version Form Card */
+  .version-form-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 32px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+  
+  .version-form-card h3 {
+    margin: 0 0 24px 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a202c;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .form-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+  }
+  
+  .form-icon svg {
+    width: 16px;
+    height: 16px;
+    stroke: white;
+  }
+  
+  .version-form {
+    display: grid;
+    gap: 20px;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .form-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d3748;
+  }
+  
+  .form-input,
+  .form-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    background: white;
+    color: #2d3748;
+    font-family: inherit;
+  }
+  
+  .form-input:focus,
+  .form-textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  }
+  
+  .form-textarea {
+    min-height: 90px;
+    resize: vertical;
+  }
+  
+  .form-input::placeholder,
+  .form-textarea::placeholder {
+    color: #a0aec0;
+  }
+  
+  .create-version-btn {
+    padding: 14px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+  }
+  
+  .create-version-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(102, 126, 234, 0.5);
+  }
+  
+  .create-version-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  .form-error {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #fff5f5;
+    border: 1px solid #feb2b2;
+    border-radius: 8px;
+    color: #c53030;
+    font-size: 14px;
+  }
+  
+  /* Versions Section */
+  .versions-section {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+  
+  .versions-header {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a202c;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .versions-header-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+  }
+  
+  .versions-header-icon svg {
+    width: 16px;
+    height: 16px;
+    stroke: white;
+  }
+  
+  .error-message,
+  .loading-message,
+  .empty-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #718096;
+  }
+  
+  .error-message {
+    color: #c53030;
+  }
+  
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e2e8f0;
+    border-top-color: #667eea;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  /* Versions List */
+  .versions-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 24px;
+  }
+  
+  .version-card {
+    background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 24px;
+    transition: all 0.3s ease;
+  }
+  
+  .version-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    border-color: #667eea;
+  }
+  
+  .version-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 12px;
+    gap: 16px;
+  }
+  
+  .version-info {
+    flex: 1;
+  }
+  
+  .version-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a202c;
+    margin: 0 0 8px 0;
+  }
+  
+  .version-changelog {
+    color: #718096;
+    font-size: 14px;
+    margin: 0 0 6px 0;
+  }
+  
+  .version-date {
+    color: #a0aec0;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .version-date svg {
+    width: 14px;
+    height: 14px;
+  }
+  
+  /* Upload Section */
+  .upload-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+  }
+  
+  .upload-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 10px;
+    display: block;
+  }
+  
+  .file-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .file-input {
+    flex: 1;
+    padding: 10px 14px;
+    font-size: 14px;
+    border: 2px dashed #cbd5e0;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .file-input:hover {
+    border-color: #667eea;
+    background: #f7fafc;
+  }
+  
+  .uploading-text {
+    color: #667eea;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  /* Files Section */
+  .files-section {
+    margin-top: 20px;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+  }
+  
+  .files-header {
+    font-size: 15px;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .files-header svg {
+    width: 18px;
+    height: 18px;
+    stroke: #667eea;
+  }
+  
+  .files-empty {
+    color: #a0aec0;
+    font-size: 14px;
+    text-align: center;
+    padding: 20px;
+  }
+  
+  .files-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 12px;
+  }
+  
+  .file-item {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s ease;
+  }
+  
+  .file-item:hover {
+    background: #edf2f7;
+    border-color: #cbd5e0;
+  }
+  
+  .file-info {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .file-details {
+    flex: 1;
+  }
+  
+  .file-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a202c;
+    margin: 0 0 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .file-name svg {
+    width: 16px;
+    height: 16px;
+    stroke: #667eea;
+  }
+  
+  .file-meta {
+    font-size: 13px;
+    color: #718096;
+  }
+  
+  .file-actions {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .download-btn,
+  .delete-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .download-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  }
+  
+  .download-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+  
+  .delete-btn {
+    background: #fff5f5;
+    color: #c53030;
+    border: 1px solid #feb2b2;
+  }
+  
+  .delete-btn:hover:not(:disabled) {
+    background: #fed7d7;
+  }
+  
+  .download-btn:disabled,
+  .delete-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .download-btn svg,
+  .delete-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .artifact-detail-page {
+      padding: 20px;
+    }
+  
+    .version-header {
+      flex-direction: column;
+    }
+  
+    .file-info {
+      flex-direction: column;
+    }
+  
+    .file-actions {
+      width: 100%;
+    }
+  
+    .download-btn,
+    .delete-btn {
+      flex: 1;
+    }
+  }

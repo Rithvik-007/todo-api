@@ -1,6 +1,6 @@
 from ast import Str
 from pydantic import EmailStr, BaseModel, Field
-from backend.app.models import Artifact, ArtifactType, VisibilityType
+from app.models import Artifact, ArtifactType, VisibilityType
 
 # User Schemas
 class RegisterRequest(BaseModel):

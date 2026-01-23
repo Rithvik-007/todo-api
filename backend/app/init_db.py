@@ -1,6 +1,6 @@
-from backend.app.db import engine
+from app.db import engine
 from sqlmodel import SQLModel
-from backend.app.models import User, Artifact, ArtifactVersion, ArtifactFile
+from app.models import User, Artifact, ArtifactVersion, ArtifactFile
 
 def init_db():
     SQLModel.metadata.create_all(engine)

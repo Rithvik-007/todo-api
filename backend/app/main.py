@@ -1,16 +1,26 @@
 from sys import version
 from fastapi import FastAPI, File, HTTPException, Depends, UploadFile
 from fastapi.responses import FileResponse
-from backend.app.schemas import RegisterRequest, UserResponse, ArtifactResponse
-from backend.app.crud import *
-from backend.app.security import verify_password
-from backend.app.auth import create_access_token
-from backend.app.schemas import *
-from backend.app.deps import get_current_user
-from backend.app.models import User
+from fastapi.middleware.cors import CORSMiddleware
+from app.schemas import RegisterRequest, UserResponse, ArtifactResponse
+from app.crud import create_user, get_user_by_email, create_artifact, get_artifacts_by_owner, create_artifact_version, list_artifact_versions, create_artifact_file, get_file_record, list_files_for_version, delete_file
+from app.security import verify_password
+from app.auth import create_access_token
+from app.schemas import LoginRequest, TokenResponse, ArtifactCreateRequest, ArtifactVersionRequest, ArtifactVersionResponse, ArtifactFileResponse
+from app.deps import get_current_user
+from app.models import User
 
 
 app = FastAPI()
+
+origins = ["http://localhost:5173"]
+
+app.add_middleware(CORSMiddleware, 
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def read_root():

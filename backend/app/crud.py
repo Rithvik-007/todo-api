@@ -5,10 +5,10 @@ import uuid
 from pathlib import Path
 from fastapi import UploadFile
 from sqlmodel import Session, select
-from backend.app.models import User
-from backend.app.db import engine
-from backend.app.security import hash_password
-from backend.app.models import Artifact, ArtifactType, VisibilityType, ArtifactVersion, ArtifactFile
+from app.models import User
+from app.db import engine
+from app.security import hash_password
+from app.models import Artifact, ArtifactType, VisibilityType, ArtifactVersion, ArtifactFile
 
 # User CRUD operations
 
@@ -121,7 +121,7 @@ def create_artifact_file(version_id: int, owner_id: int, file: UploadFile) -> Ar
         
         artifact = session.get(Artifact, artifact_id)
         
-        project_root = Path(__file__).parent.parent.parent
+        project_root = Path(__file__).parent.parent
         storage_dir = project_root / "storage" /f"user_{owner_id}" /f"artifact_{artifact.id}" / f"version_{version_id}"
         storage_dir.mkdir(parents=True, exist_ok=True)
        
