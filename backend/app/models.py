@@ -1,6 +1,4 @@
-from fileinput import filename
-from sqlalchemy.engine import create
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, UniqueConstraint
 import enum, datetime
 
 class ArtifactType(str, enum.Enum):
@@ -45,3 +43,11 @@ class ArtifactFile(SQLModel, table=True):
     size_bytes: int
     storage_path: str  # Path or URL to the stored file
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
+
+class ArtifactShare(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("artifact_id", "shared_with_user_id"),)
+
+    id: int = Field(default=None, primary_key=True)
+    artifact_id: int = Field(foreign_key="artifact.id")
+    shared_with_user_id: int = Field(foreign_key="user.id")
+    shared_at: datetime.datetime = Field(default_factory=datetime.datetime.now)

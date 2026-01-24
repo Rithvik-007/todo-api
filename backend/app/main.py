@@ -1,14 +1,16 @@
-from sys import version
+
 from fastapi import FastAPI, File, HTTPException, Depends, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import Session, select
+from app.db import engine
 from app.schemas import RegisterRequest, UserResponse, ArtifactResponse
-from app.crud import create_user, get_user_by_email, create_artifact, get_artifacts_by_owner, create_artifact_version, list_artifact_versions, create_artifact_file, get_file_record, list_files_for_version, delete_file
+from app.crud import create_user, get_user_by_email, create_artifact, get_artifacts_by_owner, create_artifact_version, list_artifact_versions, create_artifact_file, get_file_record, list_files_for_version, delete_file, share_artifact
 from app.security import verify_password
 from app.auth import create_access_token
-from app.schemas import LoginRequest, TokenResponse, ArtifactCreateRequest, ArtifactVersionRequest, ArtifactVersionResponse, ArtifactFileResponse
+from app.schemas import LoginRequest, TokenResponse, ArtifactCreateRequest, ArtifactVersionRequest, ArtifactVersionResponse, ArtifactFileResponse, ShareRequest, ShareResponse
 from app.deps import get_current_user
-from app.models import User
+from app.models import User, Artifact, ArtifactShare, VisibilityType
 
 
 app = FastAPI()
@@ -37,13 +39,14 @@ def register_user(request: RegisterRequest) -> UserResponse:
 
 @app.post("/auth/login")
 def login_user(request: LoginRequest) -> TokenResponse:
-    user = get_user_by_email(request.email)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    if not verify_password(request.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    access_token = create_access_token({"sub": user.email})
-    return TokenResponse(access_token=access_token)
+    with Session(engine) as session:
+        user = get_user_by_email(session, request.email)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        if not verify_password(request.password, user.hashed_password):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        access_token = create_access_token({"sub": user.email})
+        return TokenResponse(access_token=access_token)
 
 @app.get("/auth/me")
 def read_current_user(current_user: User = Depends(get_current_user)) -> UserResponse:
@@ -67,7 +70,7 @@ def create_artifact_endpoint(artifact_in: ArtifactCreateRequest, current_user: U
         visibility=artifact.visibility,
         created_at=artifact.created_at.isoformat()
     )
-
+# Temporary endpoint to get artifacts owned by the current user ( not used in frontend )
 @app.get("/artifacts/me", response_model=list[ArtifactResponse])
 def get_my_artifacts(current_user: User = Depends(get_current_user)) -> list[ArtifactResponse]:
     artifacts = get_artifacts_by_owner(current_user.id)
@@ -103,7 +106,7 @@ def add_artifact_version(artifact_id: int, verions_req: ArtifactVersionRequest, 
     except ValueError as e:
         error_message = str(e)
         if "Artifact not found or access denied" in error_message:
-            raise HTTPException(status_code=404, detail=error_message)
+            raise HTTPException(status_code=403, detail=error_message)
         elif "already exists" in error_message:
             raise HTTPException(status_code=409, detail=error_message)
         else:
@@ -111,17 +114,25 @@ def add_artifact_version(artifact_id: int, verions_req: ArtifactVersionRequest, 
 
 @app.get("/artifacts/{artifact_id}/versions", response_model=list[ArtifactVersionResponse])
 def list_artifact_versions_endpoint(artifact_id: int, current_user: User = Depends(get_current_user)) -> list[ArtifactVersionResponse]:
-    versions = list_artifact_versions(artifact_id, current_user.id)
-    return [
-        ArtifactVersionResponse(
-            id=version.id,
-            artifact_id=version.artifact_id,
-            version=version.version,
-            changelog=version.changelog,
-            created_at=version.created_at.isoformat()
-        )
-        for version in versions
-    ]
+    try:
+        versions = list_artifact_versions(artifact_id, current_user.id)
+        return [
+            ArtifactVersionResponse(
+                id=version.id,
+                artifact_id=version.artifact_id,
+                version=version.version,
+                changelog=version.changelog,
+                created_at=version.created_at.isoformat()
+            )
+            for version in versions
+        ]
+    except ValueError as e:
+        if "not found" in str(e):
+            raise HTTPException(status_code=404, detail=str(e))
+        elif "access denied" in str(e):
+            raise HTTPException(status_code=403, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/versions/{version_id}/files", response_model=ArtifactFileResponse)
@@ -142,22 +153,30 @@ def upload_artifact_file(version_id: int, file: UploadFile = File(...), current_
         )
     except ValueError as e:
         error_message = str(e)
-        if "not found" in error_message or "denied" in error_message:
+        if "not found" in error_message:
             raise HTTPException(status_code=404, detail=error_message)
+        elif "Access denied" in error_message:
+            raise HTTPException(status_code=403, detail=error_message)
         else:
             raise HTTPException(status_code=400, detail=error_message)
 
 @app.get("/files/{file_id}")
 def download_file(file_id: int, current_user: User = Depends(get_current_user)):
     try:
-        file_record = get_file_record(file_id, current_user.id)
+        with Session(engine) as session:
+            file_record = get_file_record(session, file_id, current_user.id)
         return FileResponse(
             path=file_record.storage_path,
             filename=file_record.filename,
             media_type=file_record.content_type
         )
     except ValueError as e: 
-        raise HTTPException(status_code=404, detail=str(e))
+        if "not found" in str(e):
+            raise HTTPException(status_code=404, detail=str(e))
+        elif "access denied" in str(e):
+            raise HTTPException(status_code=403, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
     
 @app.get("/versions/{version_id}/files", response_model=list[ArtifactFileResponse])
 def list_artifact_files(version_id: int, current_user: User = Depends(get_current_user)) -> list[ArtifactFileResponse]:
@@ -175,7 +194,7 @@ def list_artifact_files(version_id: int, current_user: User = Depends(get_curren
             for file in files
         ]
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e))
     
 
 @app.delete("/files/{file_id}")
@@ -185,3 +204,57 @@ def delete_artifact_file(file_id: int, current_user: User = Depends(get_current_
         return {"message": "File deleted successfully"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+
+@app.post("/artifacts/{artifact_id}/share")
+def share_artifact_request(artifact_id: int, share_req: ShareRequest, current_user: User = Depends(get_current_user)) -> ShareResponse:
+    try:
+        share_record = share_artifact(
+            artifact_id=artifact_id,
+            owner_id=current_user.id,
+            target_email=share_req.email
+        )
+        return ShareResponse(
+            id=share_record.id,
+            artifact_id=share_record.artifact_id,
+            shared_with_user_id=share_record.shared_with_user_id,
+            shared_at=share_record.shared_at.isoformat()
+        )
+    except ValueError as e:
+        error_message = str(e)
+        if "not found" in error_message:
+            raise HTTPException(status_code=404, detail=error_message)
+        elif "denied" in error_message:
+            raise HTTPException(status_code=403, detail=error_message)
+        elif "already shared" in error_message:
+            raise HTTPException(status_code=409, detail=error_message)
+        else:
+            raise HTTPException(status_code=400, detail=error_message)
+
+# Endpoint to list all artifacts accessible to the current user ( public, owned, or shared )
+@app.get("/artifacts", response_model=list[ArtifactResponse])
+def list_accessible_artifacts(current_user: User = Depends(get_current_user)) -> list[ArtifactResponse]:
+    with Session(engine) as session:
+        statements = (select(Artifact).where(
+            (Artifact.visibility == VisibilityType.PUBLIC) |
+            (Artifact.owner_id == current_user.id) |
+            (Artifact.id.in_(
+                select(ArtifactShare.artifact_id).where(ArtifactShare.shared_with_user_id == current_user.id)
+            ))
+        ).order_by(Artifact.created_at.desc())
+        )
+        artifacts = session.exec(statements).all()
+    return [
+        ArtifactResponse(
+            id=artifact.id,
+            owner_id=artifact.owner_id,
+            title=artifact.title,
+            artifact_type=artifact.artifact_type,
+            description=artifact.description,
+            visibility=artifact.visibility,
+            created_at=artifact.created_at.isoformat()
+        )
+        for artifact in artifacts
+    ]
+

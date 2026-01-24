@@ -1,4 +1,5 @@
 from ast import Str
+from enum import unique
 from pydantic import EmailStr, BaseModel, Field
 from app.models import Artifact, ArtifactType, VisibilityType
 
@@ -58,3 +59,14 @@ class ArtifactFileResponse(BaseModel):
     content_type: str
     size_bytes: int
     created_at: str
+
+
+# Artifact Share Schemas
+class ShareRequest(BaseModel):
+    email: EmailStr
+
+class ShareResponse(BaseModel):
+    id: int
+    artifact_id: int = Field(unique=True)
+    shared_with_user_id: int = Field(unique=True) 
+    shared_at: str

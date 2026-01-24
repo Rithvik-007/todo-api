@@ -1,5 +1,5 @@
-import datetime
 import os
+from re import A
 import shutil
 import uuid
 from pathlib import Path
@@ -8,23 +8,65 @@ from sqlmodel import Session, select
 from app.models import User
 from app.db import engine
 from app.security import hash_password
-from app.models import Artifact, ArtifactType, VisibilityType, ArtifactVersion, ArtifactFile
+from app.models import Artifact, ArtifactType, VisibilityType, ArtifactVersion, ArtifactFile, ArtifactShare
+
+
+# helper function to verify artifact version existence
+def _verify_artifact_version(session: Session, current_user_id: int, version_id: int) -> ArtifactVersion:
+    
+    artifact_version = session.get(ArtifactVersion, version_id)
+    if not artifact_version:
+        raise ValueError("Artifact version not found")
+        
+    artifact = session.get(Artifact, artifact_version.artifact_id)
+    if not artifact or artifact.owner_id != current_user_id:
+        raise ValueError("Access denied to this artifact version")
+        
+    return artifact_version
+
+def can_read_artifact(session: Session, artifact: Artifact, user_id: int) -> bool:
+    if artifact.visibility == VisibilityType.PUBLIC:
+        return True
+    if artifact.owner_id == user_id:
+        return True
+
+    statement = select(ArtifactShare).where(
+            ArtifactShare.artifact_id == artifact.id,
+            ArtifactShare.shared_with_user_id == user_id
+    )
+    shared_record = session.exec(statement).first()
+    if shared_record:
+        return True    
+    return False
+
+def can_write_artifact(session: Session, artifact: Artifact, user_id: int) -> bool:
+    return artifact.owner_id == user_id
+
+def can_download_artifact(session: Session, artifact: Artifact, user_id: int) -> bool:
+    if artifact.owner_id == user_id:
+        return True
+    statement = select(ArtifactShare).where(ArtifactShare.artifact_id == artifact.id, 
+            ArtifactShare.shared_with_user_id == user_id)
+    shared_record = session.exec(statement).first()
+    if shared_record:
+        return True
 
 # User CRUD operations
 
-def get_user_by_email(email: str) -> User | None:
-    with Session(engine) as session:
+def get_user_by_email(session: Session, email: str) -> User | None:
         statement = select(User).where(User.email == email)
         result = session.exec(statement).first()
         return result
+    
 
 def create_user(email: str, password: str) -> User:
-    if get_user_by_email(email):
-        raise ValueError("Email already registered")
-    
-    hashed_pw = hash_password(password)
-    user = User(email=email, hashed_password=hashed_pw)
     with Session(engine) as session:
+        if get_user_by_email(session= session, email=email):
+            raise ValueError("Email already registered")
+    
+        hashed_pw = hash_password(password)
+        user = User(email=email, hashed_password=hashed_pw)
+    
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -88,27 +130,16 @@ def list_artifact_versions(artifact_id: int, current_user_id: int):
         with Session(engine) as session:
             # Verify artifact ownership
             artifact = session.get(Artifact, artifact_id)
-            if not artifact or artifact.owner_id != current_user_id:
-                raise ValueError("Artifact not found or access denied")
+            if not artifact:
+                raise ValueError("Artifact not found")
+            if not can_read_artifact(session, artifact, current_user_id):
+                raise ValueError("Access denied to this artifact's versions")
             
             statement = select(ArtifactVersion).where(ArtifactVersion.artifact_id == artifact_id).order_by(ArtifactVersion.created_at.desc())
             results = session.exec(statement).all()
             return results
     except Exception as e:
         raise ValueError("Error retrieving artifact versions") from e
-
-# helper function to verify artifact version existence
-def _verify_artifact_version(session: Session, current_user_id: int, version_id: int) -> ArtifactVersion:
-    
-    artifact_version = session.get(ArtifactVersion, version_id)
-    if not artifact_version:
-        raise ValueError("Artifact version not found")
-        
-    artifact = session.get(Artifact, artifact_version.artifact_id)
-    if not artifact or artifact.owner_id != current_user_id:
-        raise ValueError("Access denied to this artifact version")
-        
-    return artifact_version
 
 # Artifact File CRUD operations
 
@@ -151,17 +182,24 @@ def create_artifact_file(version_id: int, owner_id: int, file: UploadFile) -> Ar
        
 # Download Artifact File
 # If a Session is passed in, reuse it; otherwise, open a new one.
-def get_file_record(file_id: int, current_user_id: int, session: Session | None = None) -> ArtifactFile:
-    if session is not None:
-        artifact_file = session.get(ArtifactFile, file_id)
-    else:
-        with Session(engine) as session_local:
-            artifact_file = session_local.get(ArtifactFile, file_id)
-
+def get_file_record(session: Session, file_id: int, current_user_id: int) -> ArtifactFile:
+    
+    artifact_file = session.get(ArtifactFile, file_id)
+    
     if not artifact_file:
         raise ValueError("Artifact file not found")
-    if artifact_file.owner_id != current_user_id:
-        raise ValueError("Access denied to this artifact file")
+
+    version = session.get(ArtifactVersion, artifact_file.version_id)
+    if not version:
+        raise ValueError("Artifact version not found for this file")
+
+    artifact = session.get(Artifact, version.artifact_id)
+    if not artifact:
+        raise ValueError("Artifact not found for this file")
+
+    if not can_download_artifact(session, artifact, current_user_id):
+        raise ValueError("Access denied to download this artifact file")
+        
     if not os.path.exists(artifact_file.storage_path):
         raise ValueError("Stored file not found on server")
 
@@ -170,8 +208,6 @@ def get_file_record(file_id: int, current_user_id: int, session: Session | None 
 #List all files for a given artifact version
 def list_files_for_version(version_id: int, current_user_id: int):
     with Session(engine) as session:
-        # Verify artifact version ownership
-        artifact_version = _verify_artifact_version(current_user_id=current_user_id, version_id=version_id, session = session)
         statement = (
             select(ArtifactFile)
             .where(
@@ -181,7 +217,7 @@ def list_files_for_version(version_id: int, current_user_id: int):
             .order_by(ArtifactFile.created_at.desc())
         )
 
-        results = session.exec(statement).all()
+        results = session.exec(statement).all() 
         return results
 
 # Delete an artifact file
@@ -199,4 +235,40 @@ def delete_file(file_id: int, current_user_id: int):
         # Delete the database record
         session.delete(file_record)
         session.commit()
+
+# CRUD operations for ArtifactShare 
+def share_artifact(artifact_id: int, owner_id: int, target_email: str):
+    with Session(engine) as session:
+        # Verify artifact ownership
+        artifact = session.get(Artifact, artifact_id)
+        if not artifact or artifact.owner_id != owner_id:
+            raise ValueError("Artifact not found or access denied")
+
+        #if can_write_artifact(session, artifact, owner_id) is False:
+            #raise ValueError("You do not have permission to share this artifact")
+
+        # Get target user
+        target_user = get_user_by_email(session=session, email=target_email)
+        if not target_user:
+            raise ValueError("Target user not found")
         
+        if target_user.id == owner_id:
+            raise ValueError("Cannot share artifact with yourself")
+        
+        # Check if already shared
+        statement = select(ArtifactShare).where(
+            ArtifactShare.artifact_id == artifact_id,
+            ArtifactShare.shared_with_user_id == target_user.id
+        )
+        existing_share = session.exec(statement).first()
+        if existing_share:
+            raise ValueError("Artifact already shared with this user")
+        
+        artifact_share = ArtifactShare(
+            artifact_id=artifact_id,
+            shared_with_user_id=target_user.id
+        )
+        session.add(artifact_share)
+        session.commit()
+        session.refresh(artifact_share)
+        return artifact_share
