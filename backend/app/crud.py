@@ -208,6 +208,17 @@ def get_file_record(session: Session, file_id: int, current_user_id: int) -> Art
 #List all files for a given artifact version
 def list_files_for_version(version_id: int, current_user_id: int):
     with Session(engine) as session:
+        version = session.get(ArtifactVersion, version_id)
+        if not version:
+            raise ValueError("Artifact version not found")
+
+        artifact = session.get(Artifact, version.artifact_id)
+        if not artifact:
+            raise ValueError("Artifact not found for this version")
+
+        if not can_read_artifact(session, artifact, current_user_id):
+            raise ValueError("Access denied to this artifact version's files")
+            
         statement = (
             select(ArtifactFile)
             .where(

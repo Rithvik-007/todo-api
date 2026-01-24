@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 from app.db import engine
 from app.schemas import RegisterRequest, UserResponse, ArtifactResponse
-from app.crud import create_user, get_user_by_email, create_artifact, get_artifacts_by_owner, create_artifact_version, list_artifact_versions, create_artifact_file, get_file_record, list_files_for_version, delete_file, share_artifact
+from app.crud import can_read_artifact, create_user, get_user_by_email, create_artifact, get_artifacts_by_owner, create_artifact_version, list_artifact_versions, create_artifact_file, get_file_record, list_files_for_version, delete_file, share_artifact
 from app.security import verify_password
 from app.auth import create_access_token
 from app.schemas import LoginRequest, TokenResponse, ArtifactCreateRequest, ArtifactVersionRequest, ArtifactVersionResponse, ArtifactFileResponse, ShareRequest, ShareResponse
