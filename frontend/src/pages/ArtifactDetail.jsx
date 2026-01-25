@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { fetchVersions, createVersion } from "../api/versions";
 import { uploadFile, listFiles, downloadFile, deleteFile } from "../api/files";
+import { shareArtifact } from "../api/artifacts";
 import "../style/ArtifactDetail.css";
 
 export default function ArtifactDetail() {
@@ -30,6 +31,11 @@ export default function ArtifactDetail() {
   // action state
   const [deletingFileId, setDeletingFileId] = useState(null);
   const [downloadingFileId, setDownloadingFileId] = useState(null);
+
+  // Share state
+  const [shareEmail, setShareEmail] = useState("");
+  const [sharing, setSharing] = useState(false);
+  const [shareMsg, setShareMsg] = useState("");
 
   async function loadVersions() {
     setErr("");
@@ -90,6 +96,22 @@ export default function ArtifactDetail() {
     }
   }
 
+  async function onShare(e) {
+    e.preventDefault();
+    setErr("");
+    setShareMsg("");
+    setSharing(true);
+    try {
+      await shareArtifact(artifactId, shareEmail.trim());
+      setShareMsg(`Shared with ${shareEmail}`);
+      setShareEmail("");
+    } catch (e2) {
+      setErr(e2.message || "Share failed");
+    } finally {
+      setSharing(false);
+    }
+  }
+
   async function onUpload(versionId, file) {
     if (!file) return;
     setUploadErr("");
@@ -136,6 +158,10 @@ export default function ArtifactDetail() {
   return (
     <div className="artifact-detail-page">
       <button onClick={() => nav("/artifacts")} className="back-button">
+        <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
         Back to Artifacts
       </button>
 
@@ -192,6 +218,72 @@ export default function ArtifactDetail() {
                 <line x1="12" y1="16" x2="12.01" y2="16"></line>
               </svg>
               <span>{formErr}</span>
+            </div>
+          )}
+        </form>
+      </div>
+
+      {/* Share Section */}
+      <div className="share-section-card">
+        <h3>
+          <div className="form-icon">
+            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+          </div>
+          Share Artifact
+        </h3>
+
+        <form onSubmit={onShare} className="share-form">
+          {shareMsg && (
+            <div className="alert-success">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <span>{shareMsg}</span>
+            </div>
+          )}
+
+          <div className="form-group">
+            <label className="form-label">
+              <svg className="label-icon" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              User Email
+            </label>
+            <input
+              type="email"
+              value={shareEmail}
+              onChange={(e) => setShareEmail(e.target.value)}
+              className="form-input"
+              placeholder="Enter user's email"
+              required
+              disabled={sharing}
+            />
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={sharing} 
+            className="create-version-btn"
+          >
+            {sharing ? "Sharing..." : "Share Artifact"}
+          </button>
+
+          {err && (
+            <div className="form-error">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span>{err}</span>
             </div>
           )}
         </form>

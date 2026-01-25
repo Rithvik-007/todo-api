@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchArtifacts, createArtifact } from "../api/artifacts";
+import { fetchArtifacts, createArtifact, shareArtifact } from "../api/artifacts";
 import { clearToken } from "../api/token";
 import { useNavigate } from "react-router-dom";
 import "../style/Artifacts.css";
@@ -89,6 +89,11 @@ export default function Artifacts() {
           Your Artifacts
         </h2>
         <button onClick={logout} className="logout-btn">
+          <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
           Logout
         </button>
       </div>
@@ -217,19 +222,11 @@ export default function Artifacts() {
       <div className="artifacts-list-section">
         <div className="list-header">
           <div className="list-header-icon">
-            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="8" y1="6" x2="21" y2="6"></line>
-              <line x1="8" y1="12" x2="21" y2="12"></line>
-              <line x1="8" y1="18" x2="21" y2="18"></line>
-              <line x1="3" y1="6" x2="3.01" y2="6"></line>
-              <line x1="3" y1="12" x2="3.01" y2="12"></line>
-              <line x1="3" y1="18" x2="3.01" y2="18"></line>
-            </svg>
           </div>
           My Artifacts
         </div>
 
-        {loading && (
+        {loading && ( 
           <div className="loading-state">
             <div className="loading-spinner"></div>
             <p>Loading your artifacts...</p>
