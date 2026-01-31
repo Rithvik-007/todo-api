@@ -1,38 +1,27 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import NavBar from "../components/NavBar";
+
 import { fetchVersions, createVersion } from "../api/versions";
-import { uploadFile, listFiles, downloadFile, deleteFile } from "../api/files";
-import { shareArtifact } from "../api/artifacts";
-import "../style/ArtifactDetail.css";
+import { listFiles, uploadFile, downloadFile, deleteFile } from "../api/files";
+import { shareArtifact } from "../api/shares";
 
 export default function ArtifactDetail() {
   const { artifactId } = useParams();
   const nav = useNavigate();
 
-  // versions list
   const [versions, setVersions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
-
-  // create version form
-  const [versionStr, setVersionStr] = useState("");
-  const [changeLog, setChangeLog] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [formErr, setFormErr] = useState("");
-
-  // upload state
-  const [uploadingFor, setUploadingFor] = useState(null);
-  const [uploadErr, setUploadErr] = useState("");
-
-  // files per version
   const [filesByVersion, setFilesByVersion] = useState({});
-  const [filesErr, setFilesErr] = useState("");
 
-  // action state
-  const [deletingFileId, setDeletingFileId] = useState(null);
-  const [downloadingFileId, setDownloadingFileId] = useState(null);
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  // Share state
+  // version create
+  const [ver, setVer] = useState("");
+  const [changeLog, setChangeLog] = useState("");
+  const [savingVer, setSavingVer] = useState(false);
+
+  // share
   const [shareEmail, setShareEmail] = useState("");
   const [sharing, setSharing] = useState(false);
   const [shareMsg, setShareMsg] = useState("");
@@ -51,48 +40,68 @@ export default function ArtifactDetail() {
   }
 
   async function loadFilesForVersion(versionId) {
-    setFilesErr("");
     try {
       const files = await listFiles(versionId);
       setFilesByVersion((prev) => ({ ...prev, [versionId]: files }));
     } catch (e) {
-      setFilesErr(e.message || "Failed to load files");
+      // list files can be denied for some users
+      setErr(e.message || "Failed to load files");
     }
   }
 
   useEffect(() => {
     loadVersions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [artifactId]);
 
   useEffect(() => {
     versions.forEach((v) => loadFilesForVersion(v.id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [versions]);
 
   async function onCreateVersion(e) {
     e.preventDefault();
-    setFormErr("");
-
-    if (!versionStr.trim()) {
-      setFormErr("Version is required (e.g., v1, v2).");
-      return;
-    }
-
-    setSaving(true);
+    setErr("");
+    setSavingVer(true);
     try {
-      await createVersion(artifactId, {
-        version: versionStr.trim(),
-        change_log: changeLog,
-      });
-
-      setVersionStr("");
+      await createVersion(artifactId, { version: ver.trim(), change_log: changeLog });
+      setVer("");
       setChangeLog("");
       await loadVersions();
-    } catch (ex) {
-      setFormErr(ex.message || "Failed to create version");
+    } catch (e2) {
+      setErr(e2.message || "Create version failed");
     } finally {
-      setSaving(false);
+      setSavingVer(false);
+    }
+  }
+
+  async function onUpload(versionId, file) {
+    if (!file) return;
+    setErr("");
+    try {
+      await uploadFile(versionId, file);
+      await loadFilesForVersion(versionId);
+    } catch (e) {
+      setErr(e.message || "Upload failed");
+    }
+  }
+
+  async function onDownload(fileId) {
+    setErr("");
+    try {
+      await downloadFile(fileId);
+    } catch (e) {
+      setErr(e.message || "Download failed");
+    }
+  }
+
+  async function onDelete(fileId, versionId) {
+    const ok = window.confirm("Delete this file? This cannot be undone.");
+    if (!ok) return;
+    setErr("");
+    try {
+      await deleteFile(fileId);
+      await loadFilesForVersion(versionId);
+    } catch (e) {
+      setErr(e.message || "Delete failed");
     }
   }
 
@@ -112,318 +121,140 @@ export default function ArtifactDetail() {
     }
   }
 
-  async function onUpload(versionId, file) {
-    if (!file) return;
-    setUploadErr("");
-    setUploadingFor(versionId);
-
-    try {
-      await uploadFile(versionId, file);
-      await loadFilesForVersion(versionId);
-    } catch (e) {
-      setUploadErr(e.message || "Upload failed");
-    } finally {
-      setUploadingFor(null);
-    }
-  }
-
-  async function onDownload(fileId) {
-    setFilesErr("");
-    setDownloadingFileId(fileId);
-    try {
-      await downloadFile(fileId);
-    } catch (e) {
-      setFilesErr(e.message || "Download failed");
-    } finally {
-      setDownloadingFileId(null);
-    }
-  }
-
-  async function onDelete(fileId, versionId) {
-    const ok = window.confirm("Delete this file? This cannot be undone.");
-    if (!ok) return;
-
-    setFilesErr("");
-    setDeletingFileId(fileId);
-    try {
-      await deleteFile(fileId);
-      await loadFilesForVersion(versionId);
-    } catch (e) {
-      setFilesErr(e.message || "Delete failed");
-    } finally {
-      setDeletingFileId(null);
-    }
-  }
-
   return (
-    <div className="artifact-detail-page">
-      <button onClick={() => nav("/artifacts")} className="back-button">
-        <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="19" y1="12" x2="5" y2="12"></line>
-          <polyline points="12 19 5 12 12 5"></polyline>
-        </svg>
-        Back to Artifacts
-      </button>
+    <div>
+      <NavBar />
 
-      <div className="detail-header">
-        <h2>
-          Artifact
-          <span className="artifact-id-badge">#{artifactId}</span>
-        </h2>
-      </div>
+      <div className="container py-4" style={{ maxWidth: 900 }}>
+        <button className="btn btn-outline-secondary btn-sm mb-3" onClick={() => nav("/artifacts")}>
+          ← Back
+        </button>
 
-      {/* Create Version */}
-      <div className="version-form-card">
-        <h3>
-          <div className="form-icon">
-            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
+        <h3 className="mb-3">Artifact #{artifactId}</h3>
+
+        {/* Share */}
+        <div className="card mb-4">
+          <div className="card-body">
+            <h5 className="card-title">Share (read-only)</h5>
+            <form onSubmit={onShare} className="d-flex gap-2">
+              <input
+                className="form-control"
+                placeholder="user@example.com"
+                value={shareEmail}
+                onChange={(e) => setShareEmail(e.target.value)}
+                required
+              />
+              <button className="btn btn-primary" disabled={sharing}>
+                {sharing ? "Sharing..." : "Share"}
+              </button>
+            </form>
+            {shareMsg && <div className="alert alert-success mt-3 mb-0">{shareMsg}</div>}
           </div>
-          Create New Version
-        </h3>
-
-        <form onSubmit={onCreateVersion} className="version-form">
-          <div className="form-group">
-            <label className="form-label">Version</label>
-            <input
-              value={versionStr}
-              onChange={(e) => setVersionStr(e.target.value)}
-              className="form-input"
-              placeholder="e.g., v1.0, v2.0"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Change Log</label>
-            <textarea
-              value={changeLog}
-              onChange={(e) => setChangeLog(e.target.value)}
-              className="form-textarea"
-              placeholder="What changed in this version?"
-            />
-          </div>
-
-          <button disabled={saving} className="create-version-btn">
-            {saving ? "Creating..." : "Create Version"}
-          </button>
-
-          {formErr && (
-            <div className="form-error">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
-              <span>{formErr}</span>
-            </div>
-          )}
-        </form>
-      </div>
-
-      {/* Share Section */}
-      <div className="share-section-card">
-        <h3>
-          <div className="form-icon">
-            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="18" cy="5" r="3"></circle>
-              <circle cx="6" cy="12" r="3"></circle>
-              <circle cx="18" cy="19" r="3"></circle>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-            </svg>
-          </div>
-          Share Artifact
-        </h3>
-
-        <form onSubmit={onShare} className="share-form">
-          {shareMsg && (
-            <div className="alert-success">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
-              <span>{shareMsg}</span>
-            </div>
-          )}
-
-          <div className="form-group">
-            <label className="form-label">
-              <svg className="label-icon" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                <polyline points="22,6 12,13 2,6"></polyline>
-              </svg>
-              User Email
-            </label>
-            <input
-              type="email"
-              value={shareEmail}
-              onChange={(e) => setShareEmail(e.target.value)}
-              className="form-input"
-              placeholder="Enter user's email"
-              required
-              disabled={sharing}
-            />
-          </div>
-
-          <button 
-            type="submit" 
-            disabled={sharing} 
-            className="create-version-btn"
-          >
-            {sharing ? "Sharing..." : "Share Artifact"}
-          </button>
-
-          {err && (
-            <div className="form-error">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
-              <span>{err}</span>
-            </div>
-          )}
-        </form>
-      </div>
-
-      {/* Versions + Upload + Files */}
-      <div className="versions-section">
-        <div className="versions-header">
-          <div className="versions-header-icon">
-            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="23 4 23 10 17 10"></polyline>
-              <polyline points="1 20 1 14 7 14"></polyline>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-            </svg>
-          </div>
-          Versions
         </div>
 
-        {uploadErr && <p className="error-message">{uploadErr}</p>}
-        {filesErr && <p className="error-message">{filesErr}</p>}
-
-        {loading && (
-          <div className="loading-message">
-            <div className="loading-spinner"></div>
-            <p>Loading versions...</p>
+        {/* Create version */}
+        <div className="card mb-4">
+          <div className="card-body">
+            <h5 className="card-title">Create Version</h5>
+            <form onSubmit={onCreateVersion} className="row g-2">
+              <div className="col-md-3">
+                <input className="form-control" placeholder="v1" value={ver} onChange={(e) => setVer(e.target.value)} required />
+              </div>
+              <div className="col-md-7">
+                <input
+                  className="form-control"
+                  placeholder="Change log"
+                  value={changeLog}
+                  onChange={(e) => setChangeLog(e.target.value)}
+                />
+              </div>
+              <div className="col-md-2">
+                <button className="btn btn-success w-100" disabled={savingVer}>
+                  {savingVer ? "..." : "Add"}
+                </button>
+              </div>
+            </form>
           </div>
-        )}
+        </div>
 
-        {err && <p className="error-message">{err}</p>}
+        {err && <div className="alert alert-danger">{err}</div>}
 
-        {!loading && !err && versions.length === 0 && (
-          <p className="empty-message">No versions yet. Create one above!</p>
-        )}
-
-        {!loading && !err && versions.length > 0 && (
-          <ul className="versions-list">
-            {versions.map((v) => {
+        {/* Versions */}
+        {loading ? (
+          <div>Loading...</div>
+        ) : versions.length === 0 ? (
+          <div className="text-muted">No versions yet.</div>
+        ) : (
+          <div className="accordion" id="versionsAccordion">
+            {versions.map((v, idx) => {
               const files = filesByVersion[v.id] || [];
+              const collapseId = `collapse-${v.id}`;
+              const headingId = `heading-${v.id}`;
+
               return (
-                <li key={v.id} className="version-card">
-                  <div className="version-header">
-                    <div className="version-info">
-                      <h4 className="version-name">{v.version}</h4>
-                      {v.changelog && (
-                        <p className="version-changelog">{v.changelog}</p>
-                      )}
-                      <div className="version-date">
-                        <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <polyline points="12 6 12 12 16 14"></polyline>
-                        </svg>
-                        {new Date(v.created_at).toLocaleString()}
+                <div className="accordion-item" key={v.id}>
+                  <h2 className="accordion-header" id={headingId}>
+                    <button
+                      className={`accordion-button ${idx === 0 ? "" : "collapsed"}`}
+                      type="button"
+                      data-bs-toggle="collapse"
+                      data-bs-target={`#${collapseId}`}
+                      aria-expanded={idx === 0 ? "true" : "false"}
+                      aria-controls={collapseId}
+                    >
+                      {v.version} — <span className="ms-2 text-muted small">{v.changelog}</span>
+                    </button>
+                  </h2>
+
+                  <div
+                    id={collapseId}
+                    className={`accordion-collapse collapse ${idx === 0 ? "show" : ""}`}
+                    aria-labelledby={headingId}
+                    data-bs-parent="#versionsAccordion"
+                  >
+                    <div className="accordion-body">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <div className="text-muted small">{new Date(v.created_at).toLocaleString()}</div>
+                        <input type="file" className="form-control" style={{ maxWidth: 360 }} onChange={(e) => onUpload(v.id, e.target.files?.[0])} />
                       </div>
-                    </div>
-                  </div>
 
-                  {/* Upload */}
-                  <div className="upload-section">
-                    <label className="upload-label">Upload File</label>
-                    <div className="file-input-wrapper">
-                      <input
-                        type="file"
-                        onChange={(e) => onUpload(v.id, e.target.files?.[0])}
-                        disabled={uploadingFor === v.id}
-                        className="file-input"
-                      />
-                      {uploadingFor === v.id && (
-                        <span className="uploading-text">
-                          <div className="loading-spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }}></div>
-                          Uploading...
-                        </span>
+                      {files.length === 0 ? (
+                        <div className="text-muted small">No files uploaded.</div>
+                      ) : (
+                        <table className="table table-sm">
+                          <thead>
+                            <tr>
+                              <th>Filename</th>
+                              <th>Size</th>
+                              <th>Created</th>
+                              <th></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {files.map((f) => (
+                              <tr key={f.id}>
+                                <td>{f.filename}</td>
+                                <td>{Math.round((f.size_bytes || 0) / 1024)} KB</td>
+                                <td className="text-muted small">{new Date(f.created_at).toLocaleString()}</td>
+                                <td className="text-end">
+                                  <button className="btn btn-outline-primary btn-sm me-2" onClick={() => onDownload(f.id)}>
+                                    Download
+                                  </button>
+                                  <button className="btn btn-outline-danger btn-sm" onClick={() => onDelete(f.id, v.id)}>
+                                    Delete
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       )}
                     </div>
                   </div>
-
-                  {/* Files list */}
-                  <div className="files-section">
-                    <div className="files-header">
-                      <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-                        <polyline points="13 2 13 9 20 9"></polyline>
-                      </svg>
-                      Files ({files.length})
-                    </div>
-
-                    {files.length === 0 ? (
-                      <div className="files-empty">No files uploaded yet</div>
-                    ) : (
-                      <ul className="files-list">
-                        {files.map((f) => (
-                          <li key={f.id} className="file-item">
-                            <div className="file-info">
-                              <div className="file-details">
-                                <div className="file-name">
-                                  <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-                                    <polyline points="13 2 13 9 20 9"></polyline>
-                                  </svg>
-                                  {f.filename}
-                                </div>
-                                <div className="file-meta">
-                                  {Math.round((f.size_bytes || 0) / 1024)} KB • {new Date(f.created_at).toLocaleString()}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="file-actions">
-                              <button
-                                onClick={() => onDownload(f.id)}
-                                disabled={downloadingFileId === f.id}
-                                className="download-btn"
-                              >
-                                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                  <polyline points="7 10 12 15 17 10"></polyline>
-                                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                                </svg>
-                                {downloadingFileId === f.id ? "Downloading..." : "Download"}
-                              </button>
-
-                              <button
-                                onClick={() => onDelete(f.id, v.id)}
-                                disabled={deletingFileId === f.id}
-                                className="delete-btn"
-                              >
-                                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="3 6 5 6 21 6"></polyline>
-                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                </svg>
-                                {deletingFileId === f.id ? "Deleting..." : "Delete"}
-                              </button>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </li>
+                </div>
               );
             })}
-          </ul>
+          </div>
         )}
       </div>
     </div>
