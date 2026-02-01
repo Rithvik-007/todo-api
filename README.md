@@ -7,14 +7,6 @@ This project was built to demonstrate **real-world backend system design**, secu
 
 ---
 
-## Why This Project Exists
-
-In real ML and research workflows, artifacts such as trained models, datasets, embeddings, and experiment outputs must be:
-
-- Versioned
-- Stored securely
-- Shared selectively
-- Auditable and reproducible
 
 This project simulates the backend of such a system, similar in spirit to internal tools used at companies (e.g., model registries, experiment trackers, internal artifact stores).
 
@@ -64,12 +56,6 @@ This project simulates the backend of such a system, similar in spirit to intern
   - **Public user**: read metadata only (no download)
 - Permissions enforced at CRUD level (not UI-only)
 
-### Access Control Logic
-- Centralized permission helpers:
-  - `can_read_artifact`
-  - `can_download_artifact`
-  - `can_write_artifact`
-- Prevents privilege escalation and unauthorized access
 
 ---
 
@@ -171,10 +157,3 @@ All protected endpoints require a valid Bearer token.
 - Search and tagging
 - Artifact lifecycle policies
 
----
-
-## Author
-
-**Rithvik Nagaraj**  
-Master’s in Computer Science  
-Focus: Backend Systems, ML Infrastructure, Secure APIs
